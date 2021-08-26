@@ -2,7 +2,7 @@
 import gisttools as gt
 import numpy as np
 import pandas as pd
-from base import HistogramGrid, RadialBinning, rebin
+from second_disorder.base import HistogramGrid, RadialBinning, rebin
 import logging
 
 def main():
@@ -180,10 +180,5 @@ def shifted_linspace(start, stop, n):
     return np.linspace(start, stop, n, endpoint=False) + delta/2
 
 
-def test_shifted_linspace():
-    assert np.allclose(shifted_linspace(0, 1, 5), np.array([.1, .3, .5, .7, .9]))
-
-
 if __name__ == '__main__':
-    test_shifted_linspace()
     main()
