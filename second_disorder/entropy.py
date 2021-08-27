@@ -5,43 +5,25 @@ import pandas as pd
 from second_disorder.base import HistogramGrid, RadialBinning, rebin
 import logging
 
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('hist')
-    parser.add_argument('ref_hist')
-    parser.add_argument('dens')
-    parser.add_argument('--entropy_out', required=True)
-    parser.add_argument('--ksa_out', required=True)
-    parser.add_argument('--rebin', type=int, default=1)
-    parser.add_argument('--rho0_1', type=float, required=True)
-    parser.add_argument('--rho0_2', type=float, required=True)
-    parser.add_argument('--bulk_hist', required=True, type=str)
-    parser.add_argument('--n_frames', required=True, type=int)
-    parser.add_argument('--coarse_grain', type=int, default=1)
-    parser.add_argument('--kT', type=float, default=0.59616) # 300K
-    parser.add_argument('--verbose', action='store_true')
-    args = parser.parse_args()
-    if args.verbose:
-        logging.basicConfig(level=logging.INFO)
-    hist = HistogramGrid.from_npz_name(args.hist).coarse_grain(args.coarse_grain).rebin(args.rebin)
+def run_entropy(hist, ref_hist, dens, entropy_out, ksa_out, rebin, rho0_1, rho0_2, bulk_hist, n_frames, coarse_grain, kT):
+    hist = HistogramGrid.from_npz_name(hist).coarse_grain(coarse_grain).rebin(rebin)
     binning = hist.binning
     grid = hist.grid
-    ref_hist = HistogramGrid.from_npz_name(args.ref_hist)
+    ref_hist = HistogramGrid.from_npz_name(ref_hist)
     replace_nans_in_ref_hist(ref_hist)
-    rho0_1 = args.rho0_1 * 1000
-    rho0_2 = args.rho0_2 * 1000
+    rho0_1 = rho0_1 * 1000
+    rho0_2 = rho0_2 * 1000
     logging.info(f'{rho0_1=}, {rho0_2=}')
-    fine_dens = load_density(args.dens, args.n_frames, rho0_1)
+    fine_dens = load_density(dens, n_frames, rho0_1)
     dens = rebin_3d_array_to(fine_dens, tuple(grid.shape)).ravel()
     ref_hist = coarse_grain_histgrid_to(ref_hist, grid, weights=fine_dens)
     ref_hist = ref_hist.rebin(ref_hist.n_bins // binning.number)
     ref_hist.central[:] = 1  # After coarse graining!
-    g0 = coarse_grain_rdf(load_rdf(args.bulk_hist), binning)['g'].values
+    g0 = coarse_grain_rdf(load_rdf(bulk_hist), binning)['g'].values
     entropy = np.zeros(grid.size, dtype=float)
     ksa_entropy = np.zeros(grid.size, dtype=float)
     rdfs = hist.rdf(rho0_2).reshape(grid.size, binning.number)
-    ref_rdfs = ref_hist.rdf(args.n_frames * rho0_2).reshape(grid.size, binning.number)
+    ref_rdfs = ref_hist.rdf(n_frames * rho0_2).reshape(grid.size, binning.number)
 
     logging.info(f'{g0.shape=}')
     logging.info(g0)
@@ -59,16 +41,17 @@ def main():
         ginh = rdfs[i_voxel] / Gsvp
         # The factor of 1000 is because we scale the grid from nm to Angstrom
         # before writing it out. 1 kcal/A^3 = 1000 kcal/nm^3
-        prefactor = -1/2 * args.kT * rho0_1 * rho0_2 * Gsv / 1000
+        prefactor = -1/2 * kT * rho0_1 * rho0_2 * Gsv / 1000
         entropy[i_voxel] = prefactor * ent2_inner_integral(binning, Gsvp, ginh, g0)
         ksa_entropy[i_voxel] = prefactor * ent2_inner_integral(binning, Gsvp, g0, g0)
         if i_voxel == 0:
             logging.info(f'{prefactor=}')
             logging.info(f'{entropy[i_voxel]=}')
             logging.info(f'{ksa_entropy[i_voxel]=}')
-    grid.scale(10.).save_dx(entropy, args.entropy_out, colname='2nd_order_entropy')
-    grid.scale(10.).save_dx(ksa_entropy, args.ksa_out, colname='ksa_entropy')
+    grid.scale(10.).save_dx(entropy, entropy_out, colname='2nd_order_entropy')
+    grid.scale(10.).save_dx(ksa_entropy, ksa_out, colname='ksa_entropy')
     return
+
 
 def replace_nans_in_ref_hist(histgrid):
     """Fill all NaN values in .hist with the corresponding value from .central
@@ -88,11 +71,13 @@ def coarse_grain_histgrid_to(histgrid, grid: gt.grid.Grid, weights: np.ndarray):
     assert np.allclose(grid.shape * factor, histgrid.grid.shape)
     return histgrid.coarse_grain_mean(factor, weights)
 
+
 def load_density(fname, n_frames, rho0):
     gistfile = gt.gist.load_dx(fname, colname='dens')
     gistfile['dens'] = gistfile['dens'] / n_frames / gistfile.grid.voxel_volume / rho0
     dens = gistfile['dens'].values.reshape(tuple(gistfile.grid.shape))
     return dens
+
 
 def entropy_contrib(a):
     with np.errstate(invalid='ignore', divide='ignore'):
@@ -178,7 +163,3 @@ def blurred_radial_average(grid, delta, center, pop, binning, n):
 def shifted_linspace(start, stop, n):
     delta = (stop-start)/n
     return np.linspace(start, stop, n, endpoint=False) + delta/2
-
-
-if __name__ == '__main__':
-    main()
