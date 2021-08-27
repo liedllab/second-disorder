@@ -111,31 +111,32 @@ def rho0(
     rho0 = ion_rdf[bins > dlim[0]].sum() / vox_rdf[bins > dlim[0]].sum() / n_frames
     return rho0
 
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--parm", required=True, help="Topology that can be read by mdtraj.")
-    parser.add_argument("-x", "--trajs", nargs="+", required=True, help="Trajectory that can be read by mdtraj.")
-    parser.add_argument("--ions", nargs="+", required=True)
-    parser.add_argument("--origin", nargs=3, type=float, help="Grid origin")
-    parser.add_argument("--delta", nargs=3, type=float, help="Grid delta")
-    parser.add_argument("--shape", nargs=3, type=int, help="Grid shape")
-    parser.add_argument("--outprefix", default="dTStrans-")
-    parser.add_argument("--strip_wat", action='store_true')
-    args = parser.parse_args()
-    top = md.load_topology(args.parm)
-    if args.strip_wat:
+# def main():
+#     import argparse
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("-p", "--parm", required=True, help="Topology that can be read by mdtraj.")
+#     parser.add_argument("-x", "--trajs", nargs="+", required=True, help="Trajectory that can be read by mdtraj.")
+#     parser.add_argument("--ions", nargs="+", required=True)
+#     parser.add_argument("--origin", nargs=3, type=float, help="Grid origin")
+#     parser.add_argument("--delta", nargs=3, type=float, help="Grid delta")
+#     parser.add_argument("--shape", nargs=3, type=int, help="Grid shape")
+#     parser.add_argument("--outprefix", default="dTStrans-")
+#     parser.add_argument("--strip_wat", action='store_true')
+    # args = parser.parse_args()
+def run_trans_entropy(parm, trajs, ions, origin, delta, shape, outprefix, strip_wat):
+    top = md.load_topology(parm)
+    if strip_wat:
         sel = top.select('not resname HOH')
         print(str(len(sel)) + " atoms left after stripping water.")
-        traj = md.join([md.load(t, top=top, atom_indices=sel) for t in args.trajs])
+        traj = md.join([md.load(t, top=top, atom_indices=sel) for t in trajs])
         top = traj.top
     else:
-        traj = md.join([md.load(t, top=top) for t in args.trajs])
+        traj = md.join([md.load(t, top=top) for t in trajs])
     center(traj)
-    grid = Grid(args.origin, args.shape, args.delta)
-    for ion in args.ions:
+    grid = Grid(origin, shape, delta)
+    for ion in ions:
         print(ion)
-        write_ion_density(ion, grid, traj, args.outprefix)
+        write_ion_density(ion, grid, traj, outprefix)
 
 
 def write_ion_density(ion_name, grid, traj, prefix):
@@ -161,7 +162,3 @@ def write_ion_density(ion_name, grid, traj, prefix):
         s_dens = np.zeros(grid.size, dtype=np.float32)
     outname = f"{prefix}{ion_name}.dx"
     grid.save_dx(s_dens, outname, ion_name)
-
-
-if __name__ == "__main__":
-    main()

@@ -8,39 +8,24 @@ import mdtraj as md
 import math
 import numba
 from scipy.spatial import cKDTree
-from base import HistogramGrid, RadialBinning
+from second_disorder.base import HistogramGrid, RadialBinning
 
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('top')
-    parser.add_argument('trajfiles', nargs='+')
-    parser.add_argument('--mol1', choices=('cation', 'anion', 'water'))
-    parser.add_argument('--mol2', choices=('cation', 'anion', 'water'))
-    parser.add_argument('--stride', type=int, default=1)
-    parser.add_argument('--out', required=True)
-    parser.add_argument('--n_bins', default=40, type=int)
-    parser.add_argument('--bin_spacing', default=.025, type=float)
-    parser.add_argument('--grid_spacing', default=.1, type=float)
-    parser.add_argument('--grid_bins', default=40, type=int)
-    parser.add_argument('--verbose', action='store_true')
-    args = parser.parse_args()
-    if args.verbose:
-        logging.basicConfig(level=logging.INFO)
-    top = md.load_topology(args.top)
-    frame1 = md.load_frame(args.trajfiles[0], 0, top=top, atom_indices=top.select('resid 0'))
+
+def run_conditional_density(top, trajfiles, mol1, mol2, stride, out, n_bins, bin_spacing, grid_spacing, grid_bins):
+    top = md.load_topology(top)
+    frame1 = md.load_frame(trajfiles[0], 0, top=top, atom_indices=top.select('resid 0'))
     center = np.mean(frame1.xyz, axis=1)[:, np.newaxis, :]
     selections = {'cation': 'name NA', 'anion': 'name CL', 'water': 'name O and resname HOH'}
-    sel1 = top.select(selections[args.mol1])
-    sel2 = top.select(selections[args.mol2])
-    grid = gt.grid.Grid.centered(0, args.grid_bins, args.grid_spacing)
-    binning = RadialBinning(args.n_bins, args.bin_spacing)
+    sel1 = top.select(selections[mol1])
+    sel2 = top.select(selections[mol2])
+    grid = gt.grid.Grid.centered(0, grid_bins, grid_spacing)
+    binning = RadialBinning(n_bins, bin_spacing)
     histograms = HistogramGrid.empty(grid, binning, dtype=int)
-    for traj in iter_load(args.trajfiles, top=top, stride=args.stride, offset=center):
+    for traj in iter_load(trajfiles, top=top, stride=stride, offset=center):
         a = traj.atom_slice(sel1)
         b = traj.atom_slice(sel2)
         insert_to_histograms(grid, a, b, histograms)
-    histograms.save_npz(args.out)
+    histograms.save_npz(out)
 
 
 def iter_load(traj_files, top, stride=None, offset=0):
@@ -87,7 +72,3 @@ def _insert_to_histograms_inner(points, ref_point, cell_lengths, n_bins, bin_spa
         bin = int(dist / bin_spacing)
         if bin < n_bins:
             hist[bin] += 1
-
-
-if __name__ == '__main__':
-    main()

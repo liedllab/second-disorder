@@ -4,16 +4,9 @@ import gisttools as gt
 import numpy as np
 from second_disorder.base import RadialBinning, HistogramGrid
 
-def main():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('dens2')
-    parser.add_argument('--out', required=True)
-    parser.add_argument('--hist_spacing', default=.0125, type=float)
-    parser.add_argument('--hist_bins', default=80, type=float)
-    args = parser.parse_args()
-    binning = RadialBinning(args.hist_bins, args.hist_spacing)
-    dens2 = load_density(args.dens2, 1, 1.)
+def run_density_shells(dens2, out, hist_spacing, hist_bins):
+    binning = RadialBinning(hist_bins, hist_spacing)
+    dens2 = load_density(dens2, 1, 1.)
     grid = dens2.grid
     all_gsvp = HistogramGrid.empty(grid, binning)
     flat_dens2 = dens2.data.values.ravel()
@@ -33,7 +26,7 @@ def main():
         Gsvp[nans] = density * binvol[nans]
         all_gsvp.semi_flat_hist()[i_voxel] = Gsvp
         all_gsvp.flat_central()[i_voxel] = density
-    all_gsvp.save_npz(args.out)
+    all_gsvp.save_npz(out)
     print('Done')
     return
 
