@@ -36,7 +36,7 @@ class RadialBinning:
 
     def assign(self, a):
         bins = np.intc(a / self.spacing)
-        # This is out-of-bounds by one. I keep it this way for 
+        # This is out-of-bounds by one. I keep it this way for
         # consistency with np.digitize(a, self.edges[1:])
         bins = np.clip(bins, 0, self.number)
         return bins
@@ -47,7 +47,7 @@ class RadialBinning:
             raise ValueError(f'Cannot coarse grain because self.number is not divisible by {factor}')
         spacing = self.spacing * factor
         return self.__class__(number, spacing)
-        
+
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.number}, {self.spacing})"
