@@ -2,10 +2,10 @@
 import gisttools as gt
 import numpy as np
 import pandas as pd
-from second_disorder.base import HistogramGrid, RadialBinning, rebin
+from second_disorder.base import HistogramGrid, RadialBinning, rebin, load_density
 import logging
 
-def run_entropy(hist, ref_hist, dens, entropy_out, ksa_out, rebin, rho0_1, rho0_2, bulk_hist, n_frames, coarse_grain, kT):
+def run_entropy(hist, ref_hist, dens, entropy_out, ksa_out, rebin, rho0_1, rho0_2, bulk_hist, coarse_grain, kT):
     hist = HistogramGrid.from_npz_name(hist).coarse_grain(coarse_grain).rebin(rebin)
     binning = hist.binning
     grid = hist.grid
@@ -13,16 +13,16 @@ def run_entropy(hist, ref_hist, dens, entropy_out, ksa_out, rebin, rho0_1, rho0_
     rho0_1 = rho0_1 * 1000
     rho0_2 = rho0_2 * 1000
     logging.info(f'{rho0_1=}, {rho0_2=}')
-    fine_dens = load_density(dens, n_frames, rho0_1)
+    fine_dens = load_density_arr(dens, rho0_1)
     dens = rebin_3d_array_to(fine_dens, tuple(grid.shape)).ravel()
     ref_hist = coarse_grain_histgrid_to(ref_hist, grid, weights=fine_dens)
     ref_hist = ref_hist.rebin(ref_hist.n_bins // binning.number)
-    ref_hist.central[:] = 1  # After coarse graining!
+    # ref_hist.occurrences[:] = 1  # After coarse graining!
     g0 = coarse_grain_rdf(load_rdf(bulk_hist), binning)['g'].values
     entropy = np.zeros(grid.size, dtype=float)
     ksa_entropy = np.zeros(grid.size, dtype=float)
     rdfs = hist.rdf(rho0_2).reshape(grid.size, binning.number)
-    ref_rdfs = ref_hist.rdf(n_frames * rho0_2).reshape(grid.size, binning.number)
+    ref_rdfs = ref_hist.rdf(rho0_2).reshape(grid.size, binning.number)
 
     logging.info(f'{g0.shape=}')
     logging.info(g0)
@@ -59,17 +59,17 @@ def rebin_3d_array_to(a, shape):
 
 
 def coarse_grain_histgrid_to(histgrid, grid: gt.grid.Grid, weights: np.ndarray):
+    """This modifies the input histgrid!!! Returns a new HistogramGrid coarse
+    grained to the shape of the given Grid, using the given weights."""
     factor = histgrid.grid.shape[0] // grid.shape[0]
     assert np.allclose(grid.shape * factor, histgrid.grid.shape)
-    return histgrid.coarse_grain_mean(factor, weights)
+    histgrid.rescale(weights.reshape(histgrid.grid.shape))
+    return histgrid.coarse_grain(factor)
 
 
-def load_density(fname, n_frames, rho0):
-    gistfile = gt.gist.load_dx(fname, colname='dens')
-    gistfile['dens'] = gistfile['dens'] / n_frames / gistfile.grid.voxel_volume / rho0
-    dens = gistfile['dens'].values.reshape(tuple(gistfile.grid.shape))
-    return dens
-
+def load_density_arr(fname, rho0):
+    dens = load_density(fname, rho0)
+    return dens['dens'].values.reshape(dens.grid.shape)
 
 def entropy_contrib(a):
     with np.errstate(invalid='ignore', divide='ignore'):
@@ -97,6 +97,7 @@ def load_rdf(fname):
 
 
 def coarse_grain_rdf(rdf, binning):
+    # TODO: should raise an error if the bin edges don't match.
     centers = rdf['r']
     fine = RadialBinning(len(centers), centers[1]-centers[0])
     rdf = rdf.assign(dv=fine.volume, bin=binning.assign(centers))
@@ -111,45 +112,6 @@ def coarse_grain_rdf(rdf, binning):
     )
     cg['r'] = RadialBinning(cg.shape[0], binning.spacing).centers
     return cg
-
-
-def parse_solvdens(file):
-    rho0 = {}
-    for line in file:
-        entries = line.split()
-        if len(entries) > 2 and entries[1] == 'rho0:':
-            rho0[entries[0]] = float(entries[2]) * 1000.
-    return rho0
-
-
-def radial_sums(grid, center, pop, binning):
-    ind, dist = grid.surrounding_sphere(center, binning.limit)
-    discrete = binning.assign(dist)
-    counts = np.bincount(discrete)[:binning.number]
-    total = np.bincount(discrete, weights=pop[ind])[:binning.number]
-    return counts, total
-
-
-def radial_average(grid, center, pop, bins):
-    counts, total = radial_sums(grid, center, pop, bins)
-    return total / counts
-
-
-def blurred_radial_average(grid, delta, center, pop, binning, n):
-    half_delta = delta/2
-    x_vals = center[0] + shifted_linspace(-half_delta[0], half_delta[0], n)
-    y_vals = center[1] + shifted_linspace(-half_delta[1], half_delta[1], n)
-    z_vals = center[2] + shifted_linspace(-half_delta[2], half_delta[2], n)
-    total = np.zeros(binning.number, dtype=float)
-    counts = np.zeros(binning.number, dtype=int)
-    for x in x_vals:
-        for y in y_vals:
-            for z in z_vals:
-                point = np.array([x, y, z])
-                new_c, new_t = radial_sums(grid, point, pop, binning)
-                counts += new_c
-                total += new_t
-    return total / counts
 
 
 def shifted_linspace(start, stop, n):

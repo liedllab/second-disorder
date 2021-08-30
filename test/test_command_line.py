@@ -43,7 +43,7 @@ def good_parsing_examples():
             sd_cmd.run_density_shells,
         ),
         ParsingExample(
-            'entropy hist.npz ref_hist2.npz dens1.dx --entropy_out ent.dx --ksa_out ksa.dx --rho0_1 4.0 --rho0_2 0.4  --bulk_hist bulk_hist.csv --n_frames 1000',
+            'entropy hist.npz ref_hist2.npz dens1.dx --entropy_out ent.dx --ksa_out ksa.dx --rho0_1 4.0 --rho0_2 0.4  --bulk_hist bulk_hist.csv',
             sd_cmd.run_entropy,
         ),
         ParsingExample(

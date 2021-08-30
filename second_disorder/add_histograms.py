@@ -5,7 +5,7 @@ def run_add_histograms(grids, out):
     grids = [HistogramGrid.from_npz_name(f) for f in grids]
     out = grids[0]
     for other in grids[1:]:
-        out.central += other.central
+        out.occurrences += other.occurrences
         out.hist += other.hist
         assert np.allclose(out.grid.origin, other.grid.origin)
         assert np.allclose(out.grid.delta, other.grid.delta)

@@ -64,7 +64,6 @@ def parse_args(arg_strings):
     entropy_parser.add_argument('--rho0_1', type=float, required=True)
     entropy_parser.add_argument('--rho0_2', type=float, required=True)
     entropy_parser.add_argument('--bulk_hist', required=True, type=str)
-    entropy_parser.add_argument('--n_frames', required=True, type=int)
     entropy_parser.add_argument('--coarse_grain', type=int, default=1)
     entropy_parser.add_argument('--kT', type=float, default=0.59616) # 300K
 
