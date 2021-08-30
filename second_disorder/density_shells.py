@@ -25,23 +25,17 @@ def run_density_shells(dens2, out, hist_spacing, hist_bins):
         nans = np.isnan(Gsvp)
         Gsvp[nans] = density * binvol[nans]
         all_gsvp.semi_flat_hist()[i_voxel] = Gsvp
-        all_gsvp.flat_central()[i_voxel] = density
+        # all_gsvp.flat_central()[i_voxel] = density
+        all_gsvp.flat_central()[i_voxel] = 1
     all_gsvp.save_npz(out)
     print('Done')
     return
 
-        
+
 def load_density(fname, n_frames, rho0):
     gistfile = gt.gist.load_dx(fname, colname='dens')
     gistfile['dens'] = gistfile['dens'] / n_frames / gistfile.grid.voxel_volume / rho0
     return gistfile
-
-
-def entropy_contrib(a):
-    with np.errstate(invalid='ignore', divide='ignore'):
-        log_a = np.log(a)
-    log_a[a == 0] = 0
-    return a * log_a - a + 1
 
 
 def radial_sums(grid, center, pop, binning):

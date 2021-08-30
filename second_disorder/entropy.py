@@ -10,7 +10,6 @@ def run_entropy(hist, ref_hist, dens, entropy_out, ksa_out, rebin, rho0_1, rho0_
     binning = hist.binning
     grid = hist.grid
     ref_hist = HistogramGrid.from_npz_name(ref_hist)
-    replace_nans_in_ref_hist(ref_hist)
     rho0_1 = rho0_1 * 1000
     rho0_2 = rho0_2 * 1000
     logging.info(f'{rho0_1=}, {rho0_2=}')
@@ -51,13 +50,6 @@ def run_entropy(hist, ref_hist, dens, entropy_out, ksa_out, rebin, rho0_1, rho0_
     grid.scale(10.).save_dx(entropy, entropy_out, colname='2nd_order_entropy')
     grid.scale(10.).save_dx(ksa_entropy, ksa_out, colname='ksa_entropy')
     return
-
-
-def replace_nans_in_ref_hist(histgrid):
-    """Fill all NaN values in .hist with the corresponding value from .central
-    times the corresponding bin volume"""
-    nans = np.nonzero(np.isnan(histgrid.hist))
-    histgrid.hist[nans] = histgrid.central[nans[:3]] * histgrid.binning.volume[nans[3]]
 
 
 def rebin_3d_array_to(a, shape):
