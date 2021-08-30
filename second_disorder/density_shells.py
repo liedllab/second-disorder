@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
-import gisttools as gt
 import numpy as np
-from second_disorder.base import RadialBinning, HistogramGrid
+from second_disorder.base import RadialBinning, HistogramGrid, load_density
 
 def run_density_shells(dens2, out, hist_spacing, hist_bins):
     binning = RadialBinning(hist_bins, hist_spacing)
-    dens2 = load_density(dens2, 1, 1.)
+    dens2 = load_density(dens2, 1.)
     grid = dens2.grid
     all_gsvp = HistogramGrid.empty(grid, binning)
     flat_dens2 = dens2.data.values.ravel()
@@ -25,17 +24,11 @@ def run_density_shells(dens2, out, hist_spacing, hist_bins):
         nans = np.isnan(Gsvp)
         Gsvp[nans] = density * binvol[nans]
         all_gsvp.semi_flat_hist()[i_voxel] = Gsvp
-        # all_gsvp.flat_central()[i_voxel] = density
-        all_gsvp.flat_central()[i_voxel] = 1
+        all_gsvp.flat_occurrences()[i_voxel] = 1
     all_gsvp.save_npz(out)
     print('Done')
     return
 
-
-def load_density(fname, n_frames, rho0):
-    gistfile = gt.gist.load_dx(fname, colname='dens')
-    gistfile['dens'] = gistfile['dens'] / n_frames / gistfile.grid.voxel_volume / rho0
-    return gistfile
 
 
 def radial_sums(grid, center, pop, binning):
@@ -59,7 +52,3 @@ def radial_average(grid, center, pop, binning):
 def shifted_linspace(start, stop, n):
     delta = (stop-start)/n
     return np.linspace(start, stop, n, endpoint=False) + delta/2
-
-
-if __name__ == '__main__':
-    main()

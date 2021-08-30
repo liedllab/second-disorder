@@ -8,7 +8,7 @@ import mdtraj as md
 import math
 import numba
 from scipy.spatial import cKDTree
-from second_disorder.base import HistogramGrid, RadialBinning
+from second_disorder.base import HistogramGrid, RadialBinning, iter_load
 
 
 def run_conditional_density(top, trajfiles, mol1, mol2, stride, out, n_bins, bin_spacing, grid_spacing, grid_bins):
@@ -21,20 +21,12 @@ def run_conditional_density(top, trajfiles, mol1, mol2, stride, out, n_bins, bin
     grid = gt.grid.Grid.centered(0, grid_bins, grid_spacing)
     binning = RadialBinning(n_bins, bin_spacing)
     histograms = HistogramGrid.empty(grid, binning, dtype=int)
-    for traj in iter_load(trajfiles, top=top, stride=stride, offset=center):
+    for traj in iter_load(trajfiles, top=top, stride=stride):
+        traj.xyz -= center
         a = traj.atom_slice(sel1)
         b = traj.atom_slice(sel2)
         insert_to_histograms(grid, a, b, histograms)
     histograms.save_npz(out)
-
-
-def iter_load(traj_files, top, stride=None, offset=0):
-    for fn in traj_files:
-        logging.info(f'Loading trajectory: {fn}')
-        # traj = md.load(fn, top=top, stride=stride)
-        for traj in md.iterload(fn, top=top, stride=stride, chunk=1000):
-            traj.xyz -= offset
-            yield traj
 
 
 def insert_to_histograms(grid, traj_a, traj_b, histograms):
@@ -51,10 +43,10 @@ def _insert_to_histograms(grid, a, b, cell_lengths, histograms):
     voxels = grid.assign(a)
     in_box = voxels != -1
     hist = histograms.semi_flat_hist()
-    central = histograms.flat_central()
+    occurrences = histograms.flat_occurrences()
     for x1, vox, nbrs in zip(a[in_box], voxels[in_box], tree_b.query_ball_point(a[in_box], binning.limit)):
         _insert_to_histograms_inner(b[nbrs], x1, cell_lengths, binning.number, binning.spacing, hist[vox])
-        central[vox] += 1
+        occurrences[vox] += 1
 
 
 @numba.njit
