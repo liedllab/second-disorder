@@ -1,4 +1,4 @@
-# entropy
+# second-disorder
 This is a Python implementation of 1st- and 2nd- order entropies for GIST (Grid Inhomogeneous Solvation Theory). Specifically, this can be used to compute the following quantities:
 
 * First-order translational entropy. This is slower than the versions in cpptraj or GIGIST, and meant for ions in a salt-water mixture. The advantage is that it does not rely on the water density being relatively high compared to the grid spacing, so it should be used for ions.
