@@ -51,7 +51,7 @@ def good_parsing_examples():
             sd_cmd.run_add_histograms,
         ),
         ParsingExample(
-            'trans_entropy -p top.parm7 -x traj1.nc traj2.nc --ions NA CL --origin -2 -2 -2 --delta 0.1 0.1 0.1 --shape 40 40 40',
+            'trans_entropy -p top.parm7 -x traj1.nc traj2.nc --ions NA CL --origin -2 -2 -2 --delta 0.1 0.1 0.1 --shape 40 40 40 --rho0 0.06 0.07',
             sd_cmd.run_trans_entropy,
         )
     ]

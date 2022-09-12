@@ -44,3 +44,9 @@ def test_coarse_grain_to_compute_mean(simple_histogram_grid):
     mean.rescale(1)
     assert mean.hist[0, 0, 0, 0] == 3
     assert mean.hist[0, 0, 0, 1] == 2
+
+def test_fixed_length_bincount():
+    assert np.allclose(
+        sd_base.fixed_length_bincount([0, 1, 1, 3], 3),
+        [1, 2, 0]
+    )

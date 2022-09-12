@@ -1,4 +1,6 @@
 import argparse
+from contextlib import contextmanager
+from datetime import datetime
 import logging
 import sys
 
@@ -17,7 +19,8 @@ def main():
     func = args.func
     delattr(args, 'func')
     delattr(args, 'verbose')
-    func(**vars(args))
+    with log_timing(func.__name__):
+        func(**vars(args))
 
 
 def parse_args(arg_strings):
@@ -81,13 +84,24 @@ def parse_args(arg_strings):
     trans_entropy_parser.add_argument("--delta", nargs=3, type=float, help="Grid delta")
     trans_entropy_parser.add_argument("--shape", nargs=3, type=int, help="Grid shape")
     trans_entropy_parser.add_argument("--outprefix", default="dTStrans-")
-    trans_entropy_parser.add_argument("--strip_wat", action='store_true')
+    trans_entropy_parser.add_argument("--rho0", nargs="+", required=True, type=float)
 
     args = parser.parse_args(arg_strings)
     if not hasattr(args, 'func'):
         parser.print_help()
         sys.exit('For help regarding a subcommand use second_disorder {subcommand} -h.')
     return args
+
+
+@contextmanager
+def log_timing(name):
+    name = name
+    start = datetime.now()
+    logging.info(f'Running {name} at {start}')
+    yield
+    elapsed = datetime.now() - start
+    logging.info(f'Finished running {name} after {elapsed}')
+
 
 if __name__ == "__main__":
     main()

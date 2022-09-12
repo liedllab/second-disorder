@@ -192,3 +192,10 @@ def load_density(fname, rho0):
     gistfile = gt.gist.load_dx(fname, colname='dens')
     gistfile['dens'] = gistfile['dens'] / rho0
     return gistfile
+
+
+def fixed_length_bincount(arr, length, weights=None):
+    out = np.bincount(arr, minlength=length, weights=weights)
+    if len(out) > length:
+        out = out[:length]
+    return out
